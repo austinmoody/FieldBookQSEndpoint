@@ -5,7 +5,7 @@
     // TODO - need to come up with a standard place to store this file.
 	define("__SETTINGSFILE__","/mnt/user/.fieldbook.json");
 
-	$possible_actions = array("coffee");
+	$possible_actions = array("coffee","podcast");
 
 	// Read settings file
 	$settings_file = fopen(__SETTINGSFILE__,"r") or die ("Unable to open settings file.");
@@ -40,6 +40,41 @@
             		            ->send();
                     $return_value[0]["Status"] = "Success";
                     $return_value[0]["Response"] = "Coffee added";
+                    break;
+                case "PODCAST":
+                    if ( isset($_GET["payload"]) ) {
+                        $payloadBase64 = $_GET["payload"];
+                        $payloadRaw = base64_decode($payloadBase64);
+                        $payloadJson = json_decode($payloadRaw,true);
+
+                        $podcastTime = strtotime($payloadJson["date"]);
+
+                        $payloadJson["datetime"] = $payloadJson["date"];
+                        $payloadJson["date"] = date('Y-m-d',$podcastTime);
+
+                        $podcastUrl = $baseUrl . "podcast";
+
+                        $response = \Httpful\Request::post($podcastUrl)
+                                    ->sendsJson()
+                                    ->authenticateWith($fieldbook_username,$fieldbook_key)
+                                    ->body($payloadJson)
+                                    ->send();
+
+                        $responseJson = json_decode($response,true);
+
+                        if ($responseJson["id"] == "") {
+                            $return_value[0]["Status"] = "Fail";
+                            $return_value[0]["Response"] = "Error adding podcast: " . $responseJson["message"];
+                        }
+                        else {
+                            $return_value[0]["Status"] = "Success";
+                            $return_value[0]["Response"] = "Podcast added";
+                        }
+                    }
+                    else {
+                        $return_value[0]["Status"] = "FAIL";
+                        $return_value[0]["Response"] = "Payload is missing";
+                    }
                     break;
             }
 	    }
